@@ -1,51 +1,119 @@
-use std::{io::{self, Cursor, Read}, path::Path};
+use serde::de::DeserializeOwned;
 
-const MANIFEST_URL: &str = "https://origin.warframe.com/PublicExport/index_en.txt.lzma";
-const MANIFEST_PATH: &str = "./index_en.txt.lzma";
+mod manifest;
+mod weapons;
 
-fn main() -> Result<(), BinError> {
-    let lzma = Path::new(MANIFEST_PATH);
-    if !lzma.exists() {
-        download_binary(MANIFEST_URL, lzma)?;
+fn main() {
+    let manifest: String = match manifest::get_manifest() {
+        Ok(val) => val,
+        Err(_) => todo!(), // Handle error, probably crash?
+    };
+
+    // Map each category to its corresponding schema
+    for line in manifest.lines() {
+        if let Some(category) = Category::get_match(line) {
+            
+        }
     }
 
-    let mut output = String::new();
-    let _ = lzma::open(lzma)?.read_to_string(&mut output);
-	println!("{}", output);
+    
+    
 
-    Ok(())
+    println!("{}", manifest);
+
+    //println!("{}", download_json::<serde_json::Value>("http://content.warframe.com/PublicExport/Manifest/ExportWeapons_en.json!00_3syhuTxikRhJ8-abXbtF2Q"));
 }
 
+// Each category available through the manifest
 #[derive(Debug)]
-enum BinError {
-    Reqwest(reqwest::Error),
-    Io(io::Error),
-    Lzma(lzma::Error)
+enum Category {
+    Skins,
+    Extractors,
+    Flavors,
+    ModBundles,
+    Gear,
+    MissionKeys,
+    Blueprints,
+    StarChartNodes,
+    RelicsAndArcanes,
+    ResourcesScenesAndDecor,
+    Companions,
+    Rewards,
+    Mods,
+    Warframes,
+    Weapons
 }
 
-impl From<reqwest::Error> for BinError {
-    fn from(err: reqwest::Error) -> Self {
-        BinError::Reqwest(err)
+impl Category {
+    // String representation of this category, for use in reading the manifest
+    const fn as_str(&self) -> &str {
+        match self {
+            Category::Skins => "ExportCustoms",
+            Category::Extractors => "ExportDrones",
+            Category::Flavors => "ExportFlavour",
+            Category::ModBundles => "ExportFusionBundles",
+            Category::Gear => "ExportGear",
+            Category::MissionKeys => "ExportKeys",
+            Category::Blueprints => "ExportRecipes",
+            Category::StarChartNodes => "ExportRegions",
+            Category::RelicsAndArcanes => "ExportRelicArcane",
+            Category::ResourcesScenesAndDecor => "ExportResources",
+            Category::Companions => "ExportSentinels",
+            Category::Rewards => "ExportSortieRewards",
+            Category::Mods => "ExportUpgrades",
+            Category::Warframes => "ExportWarframes",
+            Category::Weapons => "ExportWeapons"
+        }
+    }
+
+    // Returns the "first" category so we can iterate through all of them
+    const fn iter() -> Category {
+        Category::Skins
+    }
+
+    // Finds the first matching category, if any
+    fn get_match(other: &str) -> Option<Category> {
+        for category in Category::iter() {
+            if category.matches(other) {
+                return Some(category);
+            }
+        }
+
+        return None;
+    }
+
+    // Whether or not the string contains this category's string representation
+    fn matches(&self, other: &str) -> bool {
+        other.contains(self.as_str())
     }
 }
 
-impl From<io::Error> for BinError {
-    fn from(err: io::Error) -> Self {
-        BinError::Io(err)
+impl Iterator for Category {
+    type Item = Category;
+
+    // Goes through the enum by increasing ordinal
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Category::Skins => Some(Category::Extractors),
+            Category::Extractors => Some(Category::Flavors),
+            Category::Flavors => Some(Category::ModBundles),
+            Category::ModBundles => Some(Category::Gear),
+            Category::Gear => Some(Category::MissionKeys),
+            Category::MissionKeys => Some(Category::Blueprints),
+            Category::Blueprints => Some(Category::StarChartNodes),
+            Category::StarChartNodes => Some(Category::RelicsAndArcanes),
+            Category::RelicsAndArcanes => Some(Category::ResourcesScenesAndDecor),
+            Category::ResourcesScenesAndDecor => Some(Category::Companions),
+            Category::Companions => Some(Category::Rewards),
+            Category::Rewards => Some(Category::Mods),
+            Category::Mods => Some(Category::Warframes),
+            Category::Warframes => Some(Category::Weapons),
+            Category::Weapons => None
+        }
     }
 }
 
-impl From<lzma::Error> for BinError {
-    fn from(err: lzma::Error) -> Self {
-        BinError::Lzma(err)
-    }
-}
-
-fn download_binary<P: AsRef<Path>>(url: &str, path: P) -> Result<(), BinError> {
-    let response = reqwest::blocking::get(url)?;
-    let mut file = std::fs::File::create(path)?;
-    let mut content =  Cursor::new(response.bytes()?);
-    std::io::copy(&mut content, &mut file)?;
-
-    Ok(())
+pub fn download_json<T: DeserializeOwned>(url: &str) -> T {
+    let body = reqwest::blocking::get(url).expect(&format!("Could not download from {url}")).text().expect(&format!("Could not download from {url}"));
+    serde_json::from_str::<T>(&body.replace("\r", "\\r").replace("\n", "\\n")).expect("Could not deserialize response body")
 }
