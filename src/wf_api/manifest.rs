@@ -1,5 +1,6 @@
 use lzma;
 use std::{
+    fs::File,
     io::{self, Cursor, Read},
     path::Path,
     slice::Iter,
@@ -8,7 +9,7 @@ use std::{
 const MANIFEST_URL: &str = "https://origin.warframe.com/PublicExport/index_en.txt.lzma";
 const MANIFEST_PATH: &str = "./index_en.txt.lzma";
 
-// Returns the newline separated list of all exportable categories.
+/// Returns the newline separated list of all exportable categories.
 pub fn get_manifest() -> Result<String, BinError> {
     let lzma = Path::new(MANIFEST_PATH);
     if !lzma.exists() {
@@ -46,8 +47,8 @@ impl From<lzma::Error> for BinError {
     }
 }
 
-// DANGEROUS!!!
-// Make sure the URL is trusted!
+/// DANGEROUS!!!
+/// Make sure the URL is trusted!
 fn download_binary<P: AsRef<Path>>(url: &str, path: P) -> Result<(), BinError> {
     let response = reqwest::blocking::get(url)?;
     let mut file = std::fs::File::create(path)?;
@@ -57,7 +58,7 @@ fn download_binary<P: AsRef<Path>>(url: &str, path: P) -> Result<(), BinError> {
     Ok(())
 }
 
-// Each category available through the manifest
+/// Each category available through the manifest.
 #[derive(Debug, Clone, Copy)]
 pub enum Category {
     Skins,
@@ -79,7 +80,7 @@ pub enum Category {
 }
 
 impl Category {
-    // String representation of this category, for use in reading the manifest
+    /// String representation of this category, for use in reading the manifest.
     pub const fn as_str(&self) -> &str {
         match self {
             Category::Skins => "ExportCustoms",
@@ -123,7 +124,7 @@ impl Category {
         CATEGORIES.iter()
     }
 
-    // Finds the first matching category, if any
+    /// Finds the first matching category, if any.
     pub fn get_match(other: &str) -> Option<Category> {
         for &category in Category::iter() {
             if category.matches(other) {
@@ -134,7 +135,7 @@ impl Category {
         return None;
     }
 
-    // Whether or not the string contains this category's string representation
+    /// Whether or not the string contains this category's string representation.
     fn matches(&self, other: &str) -> bool {
         other.contains(self.as_str())
     }

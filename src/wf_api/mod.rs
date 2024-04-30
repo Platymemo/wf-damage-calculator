@@ -1,9 +1,9 @@
 use serde::de::DeserializeOwned;
 
 pub mod manifest;
-pub mod weapons;
+pub mod weapon;
 
-const CONTENT_SERVER: &str = "http://content.warframe.com/PublicExport/Manifest/";
+const CONTENT_SERVER: &str = "http://content.warframe.com/PublicExport/Manifest";
 
 fn download_json<T: DeserializeOwned>(url: &str) -> T {
     let body = reqwest::blocking::get(url)
@@ -15,5 +15,5 @@ fn download_json<T: DeserializeOwned>(url: &str) -> T {
 }
 
 fn content_server(path: &str) -> String {
-    format!("{CONTENT_SERVER}{path}")
+    format!("{CONTENT_SERVER}/{path}")
 }

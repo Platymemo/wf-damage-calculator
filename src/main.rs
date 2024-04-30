@@ -1,5 +1,6 @@
-use wf_api::{manifest::Category, weapons::get_weapons};
+use wf_api::{manifest::Category, weapon::get_weapons};
 
+mod damage;
 mod wf_api;
 
 fn main() {
